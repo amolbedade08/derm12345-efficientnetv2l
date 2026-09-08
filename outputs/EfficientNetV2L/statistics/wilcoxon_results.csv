@@ -1,0 +1,10 @@
+metric,n_folds,mean_difference,wilcoxon_statistic,wilcoxon_p_value,wilcoxon_significant_alpha_0_05
+accuracy,3,-0.2892519163049282,0.0,0.25,False
+precision_macro,3,-0.39774608931844974,0.0,0.25,False
+recall_macro,3,-0.1256895157801993,0.0,0.25,False
+f1_macro,3,-0.3395145029242865,0.0,0.25,False
+specificity_macro,3,-0.005712819971868492,0.0,0.25,False
+fpr_macro,3,0.005712819971868534,0.0,0.25,False
+iou_macro,3,-0.29120141677924033,0.0,0.25,False
+roc_auc_macro_ovr,3,-0.07077051794184604,0.0,0.25,False
+pr_auc_macro,3,-0.20870625222571162,0.0,0.25,False

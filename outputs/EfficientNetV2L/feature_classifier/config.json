@@ -1,0 +1,12 @@
+{
+    "n_splits": 3,
+    "random_seed": 42,
+    "num_samples": 9860,
+    "num_features": 1280,
+    "num_classes": 40,
+    "classifier": "StandardScaler + LogisticRegression",
+    "solver": "lbfgs",
+    "class_weight": "balanced",
+    "C": 1.0,
+    "max_iter": 1000
+}

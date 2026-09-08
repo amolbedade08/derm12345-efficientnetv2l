@@ -1,0 +1,35 @@
+{
+  "dataset": "PAD-UFES-20",
+  "source_metadata": "/mnt/c/Users/0M SAI RAM/Desktop/project/dataset/external/PAD-UFES-20/metadata.csv",
+  "image_root": "/mnt/c/Users/0M SAI RAM/Desktop/project/dataset/external/PAD-UFES-20/images",
+  "model": "/mnt/c/Users/0M SAI RAM/Desktop/project/outputs/EfficientNetV2L/models/efficientnetv2l_final.keras",
+  "total_dataset_images": 2298,
+  "evaluated_images": 1324,
+  "excluded_classes": [
+    "ACK",
+    "NEV"
+  ],
+  "class_mapping": {
+    "BCC": "bcc",
+    "MEL": "mel",
+    "SCC": "scc",
+    "SEK": "sk"
+  },
+  "external_classes": [
+    "BCC",
+    "MEL",
+    "SCC",
+    "SEK"
+  ],
+  "model_classes": [
+    "bcc",
+    "mel",
+    "scc",
+    "sk"
+  ],
+  "image_size": [
+    224,
+    224
+  ],
+  "batch_size": 8
+}

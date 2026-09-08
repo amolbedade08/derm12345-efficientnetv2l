@@ -1,0 +1,3 @@
+metric,value
+macro_roc_auc,0.7778710173206198
+macro_pr_auc,0.24042625889122754

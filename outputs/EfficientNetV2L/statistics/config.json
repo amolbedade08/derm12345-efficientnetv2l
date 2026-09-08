@@ -1,0 +1,12 @@
+{
+  "seed": 42,
+  "bootstrap_replicates": 2000,
+  "confidence_level": 0.95,
+  "num_classes": 40,
+  "fold_ci_method": "t-distribution across 3 CV folds",
+  "bootstrap_method": "percentile bootstrap over 9860 out-of-fold hard predictions",
+  "probabilities_available_in_aggregated_predictions": false,
+  "auc_bootstrap_status": "Not computed because the existing aggregated prediction file contains labels/predictions/correct only, not class probabilities.",
+  "shapiro_note": "With only 3 folds, Shapiro-Wilk has extremely low power and should be interpreted descriptively.",
+  "ppv_note": "PPV equals macro precision in the current one-vs-rest setup."
+}

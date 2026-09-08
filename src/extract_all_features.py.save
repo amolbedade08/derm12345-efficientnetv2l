@@ -1,0 +1,300 @@
+import os
+import gc
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+
+from tensorflow.keras.applications import EfficientNetV2L
+from tensorflow.keras.layers import GlobalAveragePooling2D
+from tensorflow.keras.models import Model
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+
+# ============================================================
+# CONFIG
+# ============================================================
+
+PROJECT_DIR = "/mnt/c/Users/0M SAI RAM/Desktop/project"
+
+TRAIN_CSV = os.path.join(
+    PROJECT_DIR,
+    "outputs/EfficientNetV2L/csv_results/train_loaded.csv"
+)
+
+OUTPUT_DIR = os.path.join(
+    PROJECT_DIR,
+    "outputs/EfficientNetV2L/features"
+)
+
+FEATURE_FILE = os.path.join(
+    OUTPUT_DIR,
+    "train_features.npy"
+)
+
+LABEL_FILE = os.path.join(
+    OUTPUT_DIR,
+    "train_feature_labels.csv"
+)
+
+IMAGE_SIZE = (224, 224)
+BATCH_SIZE = 2
+FEATURE_SIZE = 1280
+
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+# ============================================================
+# GPU CHECK
+# ============================================================
+
+print("=" * 70)
+print("EfficientNetV2-L FULL FEATURE EXTRACTION")
+print("=" * 70)
+
+print("TensorFlow:", tf.__version__)
+
+gpus = tf.config.list_physical_devices("GPU")
+print("GPUs detected:", gpus)
+
+if gpus:
+    try:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+        print("GPU memory growth enabled.")
+    except Exception as e:
+        print("GPU memory growth warning:", e)
+else:
+    print("WARNING: No GPU detected.")
+
+# ============================================================
+# LOAD CSV
+# ============================================================
+
+if not os.path.exists(TRAIN_CSV):
+    raise FileNotFoundError(
+        f"Training CSV not found:\n{TRAIN_CSV}"
+    )
+
+df = pd.read_csv(TRAIN_CSV)
+
+print("\nTraining CSV loaded.")
+print("Number of rows:", len(df))
+print("Columns:", list(df.columns))
+
+required_columns = ["filepath", "label"]
+
+for col in required_columns:
+    if col not in df.columns:
+        raise ValueError(
+            f"Required column '{col}' not found in CSV."
+        )
+
+# Remove rows with invalid paths
+df["filepath"] = df["filepath"].astype(str)
+
+missing_files = ~df["filepath"].apply(os.path.exists)
+
+if missing_files.sum() > 0:
+    print(
+        f"\nWARNING: {missing_files.sum()} image files are missing."
+    )
+    df = df.loc[~missing_files].reset_index(drop=True)
+
+print("Usable images:", len(df))
+
+# ============================================================
+# LABEL ENCODING
+# ============================================================
+
+classes = sorted(df["label"].astype(str).unique())
+
+class_to_index = {
+    cls: idx for idx, cls in enumerate(classes)
+}
+
+df["class_index"] = (
+    df["label"].astype(str).map(class_to_index).astype(int)
+)
+
+print("Number of classes:", len(classes))
+
+print("\nClass mapping:")
+for cls, idx in class_to_index.items():
+    print(f"{idx:2d} -> {cls}")
+
+# ============================================================
+# GENERATOR
+# ============================================================
+
+datagen = ImageDataGenerator(
+    rescale=1.0 / 255.0
+)
+
+generator = datagen.
+
+flow_from_dataframe(
+    dataframe=df,
+    x_col="filepath",
+    y_col="class_index_str",
+    target_size=IMAGE_SIZE,
+    batch_size=BATCH_SIZE,
+    class_mode="sparse",
+    classes=[str(i) for i in range(len(classes))],
+    shuffle=False,
+    validate_filenames=False
+)
+
+print("\nGenerator created.")
+print("Samples:", generator.samples)
+print("Batches:", len(generator))
+
+# ============================================================
+# MODEL
+# ============================================================
+
+print("\nLoading EfficientNetV2-L...")
+
+base_model = EfficientNetV2L(
+    weights="imagenet",
+    include_top=False,
+    input_shape=(224, 224, 3),
+    include_preprocessing=False
+)
+
+base_model.trainable = False
+
+x = base_model.output
+x = GlobalAveragePooling2D()(x)
+
+feature_model = Model(
+    inputs=base_model.input,
+    outputs=x
+)
+
+print("Feature model ready.")
+print("Feature dimension:", feature_model.output_shape[-1])
+
+# ============================================================
+# FEATURE STORAGE
+# ============================================================
+
+num_samples = len(df)
+
+# Memory-mapped array avoids unnecessary RAM usage.
+features_memmap = np.memmap(
+    FEATURE_FILE,
+    dtype="float32",
+    mode="w+",
+    shape=(num_samples, FEATURE_SIZE)
+)
+
+print("\nFeature storage created:")
+print(FEATURE_FILE)
+print("Shape:", (num_samples, FEATURE_SIZE))
+
+# ============================================================
+# EXTRACTION
+# ============================================================
+
+print("\nStarting feature extraction...")
+print("This may take a while on RTX 3050 4 GB.")
+print()
+
+generator.reset()
+
+write_index = 0
+
+for batch_idx in range(len(generator)):
+
+    images, labels = generator[batch_idx]
+
+    batch_features = feature_model.predict(
+        images,
+        verbose=0
+    )
+
+    batch_features = np.asarray(
+        batch_features,
+        dtype=np.float32
+    )
+
+    batch_size_actual = batch_features.shape[0]
+
+    end_index = write_index + batch_size_actual
+
+    features_memmap[
+        write_index:end_index
+    ] = batch_features
+
+    write_index = end_index
+
+    if (
+        batch_idx == 0
+        or (batch_idx + 1) % 100 == 0
+        or batch_idx == len(generator) - 1
+    ):
+        percent = (
+            100.0 * write_index / num_samples
+        )
+
+        print(
+            f"Processed {write_index}/{num_samples} "
+            f"({percent:.2f}%)"
+        )
+
+# Flush data to disk
+features_memmap.flush()
+
+# ============================================================
+# SAVE LABEL INFORMATION
+# ============================================================
+
+labels_df = df[
+    ["filepath", "label", "class_index"]
+].copy()
+
+labels_df.to_csv(
+    LABEL_FILE,
+    index=False
+)
+
+# ============================================================
+# VERIFY
+# ============================================================
+
+del feature_model
+del base_model
+del generator
+gc.collect()
+
+saved_features = np.load(
+    FEATURE_FILE,
+    mmap_mode="r"
+)
+
+print("\n")
+print("=" * 70)
+print("FEATURE EXTRACTION SUCCESS")
+print("=" * 70)
+
+print("Feature file:")
+print(FEATURE_FILE)
+
+print("Label file:")
+print(LABEL_FILE)
+
+print("Feature shape:", saved_features.shape)
+print("Number of samples:", saved_features.shape[0])
+print("Number of features:", saved_features.shape[1])
+
+print("=" * 70)
+
+expected_shape = (num_samples, FEATURE_SIZE)
+
+if tuple(saved_features.shape) != expected_shape:
+    raise RuntimeError(
+        f"Unexpected feature shape. "
+        f"Expected {expected_shape}, "
+        f"got {saved_features.shape}"
+    )
+
+print("Shape verification: PASSED")
+print("All training features were extracted successfully.")

@@ -1,0 +1,4 @@
+Dataset,Role,Classes,Train_images,Test_images,Total_images
+Derm12345,Primary dataset,40,9860,2485,12345
+PAD-UFES-20,External validation,6,-,-,2298
+PAD-UFES-20 shared-label subset,External evaluation,4,-,1324,1324
