@@ -1,0 +1,6 @@
+tensorflow[and-cuda]==2.21.0
+numpy
+pandas
+scipy
+scikit-learn
+matplotlib
